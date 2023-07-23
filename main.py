@@ -13,8 +13,8 @@ from pyrogram.types import (
 uvloop.install()
 app = Client(
     "boto",
-    api_id="API_ID",
-    api_hash="API_HASH",
+    api_id="19099900",
+    api_hash="2b445de78e5baf012a0793e60bd4fbf5",
     bot_token="BOT_TOKEN",
 )
 
