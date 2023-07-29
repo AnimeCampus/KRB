@@ -101,7 +101,7 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     await app.send_photo(
         chat_id=chat_id,
         photo=buffer,
-        caption= t,
+        t,
         reply_markup=InlineKeyboardMarkup(
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
