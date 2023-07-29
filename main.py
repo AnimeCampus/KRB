@@ -1,10 +1,10 @@
-from utils.db import get_name, increase_count, chatdb
+from pymongo.mongo_client import MongoClient
+from datetime import date
 import uvloop
 import matplotlib.pyplot as plt
 from io import BytesIO
 from pyrogram.client import Client
 from pyrogram import filters
-from datetime import date
 from pyrogram.types import (
     Message,
     CallbackQuery,
@@ -20,63 +20,19 @@ app = Client(
     bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
 )
 
-
-@app.on_message(
-    ~filters.bot
-    & ~filters.forwarded
-    & filters.group
-    & ~filters.via_bot
-    & ~filters.service
-)
-async def inc_user(_, message: Message):
-    if message.text:
-        if (
-            message.text.strip() == "/top@AboutNanoBot"
-            or message.text.strip() == "/top"
-        ):
-            chat = message.chat.id
-            user = message.from_user.id
-            increase_count(chat, user)
-            print(chat, user, "increased")
-
-            # Get the top users and their chat counts
-            chat_data = chatdb.find_one({"chat": chat})
-            today = str(date.today())
-            if not chat_data or not chat_data.get(today):
-                return await message.reply_text("No data available for today")
-
-            top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
-            top_users = [user_id for user_id, _ in top_users_data]
-
-            # Generate and send the graph
-            await generate_graph_and_send(chat, top_users, _)
-
-...
-
-import asyncio
-
-...
+# ... (Code for the increase_count function and the mongo client)
 
 async def get_first_name(app, user_id):
-    # Fetch the user information from the API
     user = await app.get_users(user_id)
     if user is not None:
         return user.first_name
     return "Unknown User"
 
-
 async def get_names_async(app, user_ids):
     tasks = [get_first_name(app, user_id) for user_id in user_ids]
     return await asyncio.gather(*tasks)
 
-
-async def generate_graph_and_send(chat_id, top_users, app):
-    # Get the chat counts for the top users from the top_users_data
-    chat_data = chatdb.find_one({"chat": chat_id})
-    today = str(date.today())
-    top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
-    chat_counts = [count for _, count in top_users_data]
-
+async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.figure(figsize=(10, 6))
     plt.bar(top_users, chat_counts, color="skyblue")
     plt.xticks(rotation=45, ha="right")
@@ -111,8 +67,6 @@ async def generate_graph_and_send(chat_id, top_users, app):
     # Close the plot to avoid memory leaks
     plt.close()
 
-...
-
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -129,16 +83,12 @@ async def show_top_today_callback(_, query: CallbackQuery):
 
     t = "🔰 **Today's Top Users :**\n\n"
 
-    top_users = [i for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-    chat_counts = [k for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-
-    # Fetch user first names asynchronously using asyncio.gather
-    top_user_names = await get_names_async(app, top_users)
-
-    t += "\n".join([f"**{i + 1}.** {user_name} - {count}" for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts))])
+    top_users_data = sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]
+    top_users = [user_id for user_id, _ in top_users_data]
+    chat_counts = [count for _, count in top_users_data]
 
     # Generate and send the graph
-    await generate_graph_and_send(query.message.chat.id, top_user_names, chat_counts, app)
+    await generate_graph_and_send(query.message.chat.id, top_users, chat_counts, app)
 
     await query.message.edit_text(
         t,
@@ -146,11 +96,6 @@ async def show_top_today_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
-
-...
-
-app.run()
-
 
 @app.on_callback_query(filters.regex("overall"))
 async def show_top_overall_callback(_, query: CallbackQuery):
@@ -188,7 +133,37 @@ async def show_top_overall_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
         ),
     )
-...
 
+@app.on_message(
+    ~filters.bot
+    & ~filters.forwarded
+    & filters.group
+    & ~filters.via_bot
+    & ~filters.service
+)
+async def inc_user(_, message: Message):
+    if message.text:
+        if (
+            message.text.strip() == "/top@AboutNanoBot"
+            or message.text.strip() == "/top"
+        ):
+            chat = message.chat.id
+            user = message.from_user.id
+            increase_count(chat, user)
+            print(chat, user, "increased")
+
+            # Get the top users and their chat counts
+            chat_data = chatdb.find_one({"chat": chat})
+            today = str(date.today())
+            if not chat_data or not chat_data.get(today):
+                return await message.reply_text("No data available for today")
+
+            top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
+            top_users = [user_id for user_id, _ in top_users_data]
+            chat_counts = [count for _, count in top_users_data]
+
+            # Generate and send the graph
+            await generate_graph_and_send(chat, top_users, chat_counts, app)
+            
 print("started")
 app.run()
