@@ -110,9 +110,7 @@ async def get_name(client, user_id):
 
 async def main():
     print("Started")
-    await app.start()
-    await asyncio.sleep(1)
-    await app.stop()
+    await app.start()    
 
 
 if __name__ == "__main__":
