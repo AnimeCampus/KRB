@@ -83,6 +83,8 @@ async def show_top_today(_, message: Message):
     )
 
 
+...
+
 async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.figure(figsize=(10, 6))
     plt.bar(top_users, chat_counts, color="skyblue")
@@ -97,11 +99,19 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.savefig(buffer, format="png")
     buffer.seek(0)
 
-    # Send the graph as a photo to the chat
+    # Fetch user names asynchronously using asyncio.gather
+    top_user_names = await get_names_async(app, top_users)
+
+    # Create the caption with usernames and chat counts
+    caption = "🔰 **Today's Top Users :**\n\n"
+    for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts)):
+        caption += f"**{i + 1}.** {user_name} - {count}\n"
+
+    # Send the graph as a photo with the caption to the chat
     await app.send_photo(
         chat_id=chat_id,
         photo=buffer,
-        captain="t",
+        caption=caption,
         reply_markup=InlineKeyboardMarkup(
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
@@ -111,6 +121,40 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.close()
 
 ...
+
+@app.on_callback_query(filters.regex("today"))
+async def show_top_today_callback(_, query: CallbackQuery):
+    print("today top in", query.message.chat.id)
+    chat = chatdb.find_one({"chat": query.message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await query.answer("No data available", show_alert=True)
+
+    if not chat.get(today):
+        return await query.answer("No data available for today", show_alert=True)
+
+    await query.answer("Processing... Please wait")
+
+    t = "🔰 **Today's Top Users :**\n\n"
+
+    top_users = [i for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
+    chat_counts = [k for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
+
+    # Fetch user names asynchronously using asyncio.gather
+    top_user_names = await get_names_async(app, top_users)
+
+    t += "\n".join([f"**{i + 1}.** {user_name} - {count}" for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts))])
+
+    # Generate and send the graph
+    await generate_graph_and_send(query.message.chat.id, top_user_names, chat_counts, app)
+
+    await query.message.edit_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+        ),
+    )
 
 @app.on_callback_query(filters.regex("overall"))
 async def show_top_overall_callback(_, query: CallbackQuery):
@@ -148,41 +192,6 @@ async def show_top_overall_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
         ),
     )
-
-@app.on_callback_query(filters.regex("today"))
-async def show_top_today_callback(_, query: CallbackQuery):
-    print("today top in", query.message.chat.id)
-    chat = chatdb.find_one({"chat": query.message.chat.id})
-    today = str(date.today())
-
-    if not chat:
-        return await query.answer("No data available", show_alert=True)
-
-    if not chat.get(today):
-        return await query.answer("No data available for today", show_alert=True)
-
-    await query.answer("Processing... Please wait")
-
-    t = "🔰 **Today's Top Users :**\n\n"
-
-    top_users = [i for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-    chat_counts = [k for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-
-    # Fetch user names asynchronously using asyncio.gather
-    top_user_names = await get_names_async(app, top_users)
-
-    t += "\n".join([f"**{i + 1}.** {user_name} - {count}" for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts))])
-
-    # Generate and send the graph
-    await generate_graph_and_send(query.message.chat.id, top_user_names, chat_counts, app)
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
-
 ...
 
 print("started")
