@@ -50,39 +50,6 @@ async def get_names_async(app, user_ids):
     tasks = [get_name(app, user_id) for user_id in user_ids]
     return await asyncio.gather(*tasks)
 
-
-async def show_top_today(_, message: Message):
-    print("today top in", message.chat.id)
-    chat = chatdb.find_one({"chat": message.chat.id})
-    today = str(date.today())
-
-    if not chat:
-        return await message.reply_text("no data available")
-
-    if not chat.get(today):
-        return await message.reply_text("no data available for today")
-
-    t = "🔰 **Today's Top Users :**\n\n"
-
-    top_users = []
-    chat_counts = []
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        top_users.append(i)
-        chat_counts.append(k)
-
-        t += f"**{len(top_users)}.** {i} - {k}\n"
-
-    # Generate and send the graph
-    await generate_graph_and_send(message.chat.id, top_users, chat_counts, app)
-
-    await message.reply_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
-
-
 ...
 
 async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
