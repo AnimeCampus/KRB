@@ -1,7 +1,7 @@
 from pymongo.mongo_client import MongoClient
 from datetime import date
 
-uri = "mongodb+srv://sonu55:sonu55@cluster0.vqztrvk.mongodb.net/?retryWrites=true&w=majority"
+uri = "mongodb+srv://jarvis:op@cluster0.7tisvwv.mongodb.net/?retryWrites=true&w=majority"
 mongo = MongoClient(uri).Rankings
 chatdb = mongo.chat
 
