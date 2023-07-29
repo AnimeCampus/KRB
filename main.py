@@ -40,7 +40,8 @@ async def generate_ranking_graph(chat):
         counts.append(k)
 
     # Set a different font to avoid glyph missing warnings
-    plt.rcParams["font.family"] = "DejaVu Sans"
+    # Set the font to a generic font (sans-serif)
+    plt.rcParams["font.family"] = "sans-serif"
 
     plt.figure(figsize=(10, 6))
     plt.bar(names, counts, color='red')
