@@ -34,7 +34,7 @@ async def inc_user(_, message: Message):
             message.text.strip() == "/top@AboutNanoBot"
             or message.text.strip() == "/top"
         ):
-            return await show_top_today(_, message)
+            return await generate_graph_and_send(_, message)
 
     chat = message.chat.id
     user = message.from_user.id
