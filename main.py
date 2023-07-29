@@ -42,6 +42,15 @@ async def inc_user(_, message: Message):
     print(chat, user, "increased")
 
 
+import asyncio
+
+...
+
+async def get_names_async(app, user_ids):
+    tasks = [get_name(app, user_id) for user_id in user_ids]
+    return await asyncio.gather(*tasks)
+
+
 async def show_top_today(_, message: Message):
     print("today top in", message.chat.id)
     chat = chatdb.find_one({"chat": message.chat.id})
@@ -58,14 +67,13 @@ async def show_top_today(_, message: Message):
     top_users = []
     chat_counts = []
     for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
         top_users.append(i)
         chat_counts.append(k)
 
         t += f"**{len(top_users)}.** {i} - {k}\n"
 
     # Generate and send the graph
-    generate_graph_and_send(message.chat.id, top_users, chat_counts)
+    await generate_graph_and_send(message.chat.id, top_users, chat_counts, app)
 
     await message.reply_text(
         t,
@@ -75,7 +83,7 @@ async def show_top_today(_, message: Message):
     )
 
 
-def generate_graph_and_send(chat_id, top_users, chat_counts):
+async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.figure(figsize=(10, 6))
     plt.bar(top_users, chat_counts, color="skyblue")
     plt.xticks(rotation=45, ha="right")
@@ -90,7 +98,7 @@ def generate_graph_and_send(chat_id, top_users, chat_counts):
     buffer.seek(0)
 
     # Send the graph as a photo to the chat
-    app.send_photo(
+    await app.send_photo(
         chat_id=chat_id,
         photo=buffer,
         caption="🔰 **Today's Top Users**",
@@ -102,44 +110,7 @@ def generate_graph_and_send(chat_id, top_users, chat_counts):
     # Close the plot to avoid memory leaks
     plt.close()
 
-
-@app.on_callback_query(filters.regex("overall"))
-async def show_top_overall_callback(_, query: CallbackQuery):
-    print("overall top in", query.message.chat.id)
-    chat = chatdb.find_one({"chat": query.message.chat.id})
-
-    if not chat:
-        return await query.answer("No data available", show_alert=True)
-
-    await query.answer("Processing... Please wait")
-
-    t = "🔰 **Overall Top Users :**\n\n"
-
-    overall_dict = {}
-    for i, k in chat.items():
-        if i == "chat" or i == "_id":
-            continue
-
-        for j, l in k.items():
-            if j not in overall_dict:
-                overall_dict[j] = l
-            else:
-                overall_dict[j] += l
-
-    pos = 1
-    for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
-        ),
-    )
-
+...
 
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
@@ -157,17 +128,16 @@ async def show_top_today_callback(_, query: CallbackQuery):
 
     t = "🔰 **Today's Top Users :**\n\n"
 
-    pos = 1
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
+    top_users = [i for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
+    chat_counts = [k for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
 
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
+    # Fetch user names asynchronously using asyncio.gather
+    top_user_names = await get_names_async(app, top_users)
+
+    t += "\n".join([f"**{i + 1}.** {user_name} - {count}" for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts))])
 
     # Generate and send the graph
-    top_users = [i async for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-    chat_counts = [k async for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
-    generate_graph_and_send(query.message.chat.id, top_users, chat_counts)
+    await generate_graph_and_send(query.message.chat.id, top_user_names, chat_counts, app)
 
     await query.message.edit_text(
         t,
@@ -175,6 +145,10 @@ async def show_top_today_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
+
+...
+
+app.run()
 
 
 print("started")
