@@ -19,42 +19,6 @@ app = Client(
     bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
 )
 
-async def generate_ranking_graph(chat):
-    overall_dict = {}
-    for i, k in chat.items():
-        if i == "chat" or i == "_id":
-            continue
-
-        for j, l in k.items():
-            if j not in overall_dict:
-                overall_dict[j] = l
-            else:
-                overall_dict[j] += l
-
-    sorted_overall = sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]
-    names = []
-    counts = []
-    for i, k in sorted_overall:
-        i = await get_name(app, i)
-        names.append(i)
-        counts.append(k)
-
-    # Set a different font to avoid glyph missing warnings
-    # Set the font to a generic font (sans-serif)
-    plt.rcParams["font.family"] = "sans-serif"
-
-    plt.figure(figsize=(10, 6))
-    plt.bar(names, counts, color='red')
-    plt.xlabel("Users")
-    plt.ylabel("Activity Count")
-    plt.title("Overall Top Users")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-
-    # Save the graph to a file
-    plt.savefig("overall_ranking_graph.png")
-    plt.close()
-
 
 @app.on_message(
     ~filters.bot
@@ -180,7 +144,7 @@ async def start_command(_, message: Message):
     )
 
 # Command to view user's rank for today
-@app.on_message(filters.command("myrank") & filters.group)
+@app.on_message(filters.command("myrank"))
 async def my_rank(_, message: Message):
     chat = chatdb.find_one({"chat": message.chat.id})
     today = str(date.today())
