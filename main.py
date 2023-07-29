@@ -22,6 +22,17 @@ app = Client(
 
 
 @app.on_message(
+    filters.command("start")
+    & ~filters.bot
+    & ~filters.forwarded
+    & filters.private
+)
+async def start_command(_, message: Message):
+    # Your logic for handling the /start command goes here
+    await message.reply_text("Welcome to the AnimeKrew Ranking Bot!\nType /top to see the top rankings.")
+
+
+@app.on_message(
     ~filters.bot
     & ~filters.forwarded
     & filters.group
