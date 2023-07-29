@@ -98,12 +98,15 @@ async def show_top_today(_, message: Message):
     # Send the chart along with the text
     await message.reply_photo(photo='top_users_chart.png', caption=t)
     os.remove('top_users_chart.png')
-    await query.message.edit_text(
-        # Create an InlineKeyboardMarkup with a button to show overall top users
-    keyboard = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+    await message.reply_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+        ),
     )
-        
+    
+   
+      
 
 
 
