@@ -62,7 +62,10 @@ async def get_names_async(app, user_ids):
     return await asyncio.gather(*tasks)
 
 
-async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
+async def generate_graph_and_send(chat_id, top_users, app):
+    # Get the chat counts for the top users
+    chat_counts = [get_count(chat_id, user_id) for user_id in top_users]
+
     plt.figure(figsize=(10, 6))
     plt.bar(top_users, chat_counts, color="skyblue")
     plt.xticks(rotation=45, ha="right")
