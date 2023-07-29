@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+import numpy as np
 from utils.db import get_name, increase_count, chatdb
 import uvloop
 from pyrogram.client import Client
@@ -46,26 +48,44 @@ async def show_top_today(_, message: Message):
     today = str(date.today())
 
     if not chat:
-        return await message.reply_text("no data available")
+        return await message.reply_text("No data available")
 
     if not chat.get(today):
-        return await message.reply_text("no data available for today")
+        return await message.reply_text("No data available for today")
 
     t = "🔰 **Today's Top Users :**\n\n"
 
-    pos = 1
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
+    user_data = sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]
 
+    pos = 1
+    for i, k in user_data:
+        i = await get_name(app, i)
         t += f"**{pos}.** {i} - {k}\n"
         pos += 1
 
-    await message.reply_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
+    total_users = len(chat[today])
+    total_groups = chatdb.count() - 1  # Subtract 1 to exclude the metadata document
+
+    t += f"\n📈 **Statistics:**\nTotal Users: {total_users}\nTotal Groups: {total_groups}"
+
+    # Create a bar chart for the top users
+    users = [item[0] for item in user_data]
+    scores = [item[1] for item in user_data]
+
+    plt.barh(np.arange(len(users)), scores, align='center', color='skyblue')
+    plt.yticks(np.arange(len(users)), users)
+    plt.xlabel('Scores')
+    plt.title("Today's Top Users")
+
+    # Save the plot to an image
+    plt.tight_layout()
+    plt.savefig('top_users_chart.png', dpi=300)
+    plt.close()
+
+    # Send the chart along with the text
+    await message.reply_photo(photo='top_users_chart.png', caption=t)
+    os.remove('top_users_chart.png')
+
 
 
 @app.on_callback_query(filters.regex("overall"))
