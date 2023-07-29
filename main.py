@@ -17,7 +17,7 @@ app = Client(
     "boto",
     api_id="19099900",
     api_hash="2b445de78e5baf012a0793e60bd4fbf5",
-    bot_token="6642370310:AAGMdUYAoaiO_M-xNU8wPXfQoeBlNy_A7LY",
+    bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
 )
 
 
