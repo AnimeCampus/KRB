@@ -177,23 +177,16 @@ async def show_top_overall_callback(_, query: CallbackQuery):
 
 
 @app.on_message(
-    ~filters.bot
-    & ~filters.forwarded
+    filters.command("top", prefixes="/")  # Handle the /top command
     & filters.group
-    & ~filters.via_bot
-    & ~filters.service
 )
-async def inc_user(_, message: Message):
+async def view_top_rankings(_, message: Message):
     chat = message.chat.id
     user = message.from_user.id
 
     # Ignore messages sent by the bot itself
     if user == app.get_me().id:
         return
-
-    # Increase chat count for the user
-    increase_count(chat, user)
-    print(chat, user, "increased")
 
     # Get the top users and their chat counts
     chat_data = chatdb.find_one({"chat": chat})
@@ -207,8 +200,6 @@ async def inc_user(_, message: Message):
 
     # Generate and send the graph with the caption
     await generate_graph_and_send(chat, top_users, chat_counts, app)
-
-
 
 print("started")
 app.run()
