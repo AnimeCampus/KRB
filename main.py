@@ -1,3 +1,40 @@
+import time
+
+# Create a dictionary to keep track of users, their last message timestamps, and message counts
+user_last_message = {}
+
+
+def flood_protect(func):
+    async def wrapper(_, message):
+        user_id = message.from_user.id
+        current_time = time.time()
+
+        if user_id not in user_last_message:
+            user_last_message[user_id] = {
+                "last_message_time": current_time,
+                "message_count": 1,
+            }
+        else:
+            user_data = user_last_message[user_id]
+            last_message_time = user_data["last_message_time"]
+            time_diff = current_time - last_message_time
+
+            if time_diff < 10:  # Adjust the time limit here (in seconds)
+                if user_data["message_count"] >= 15:  # Adjust the message limit here
+                    return  # Ignore the message
+                else:
+                    user_data["message_count"] += 1
+            else:
+                user_data["last_message_time"] = current_time
+                user_data["message_count"] = 1
+
+        await func(_, message)
+
+    return wrapper
+
+
+# Your existing code
+
 from utils.db import get_name, increase_count, chatdb
 import uvloop
 import matplotlib.pyplot as plt
@@ -27,6 +64,7 @@ app = Client(
     & ~filters.via_bot
     & ~filters.service
 )
+@flood_protect  # Apply flood protection decorator
 async def inc_user(_, message: Message):
     if message.text:
         if (
@@ -39,6 +77,7 @@ async def inc_user(_, message: Message):
     user = message.from_user.id
     increase_count(chat, user)
     print(chat, user, "increased")
+
 
 async def show_top_today(_, message: Message):
     print("today top in", message.chat.id)
@@ -66,6 +105,7 @@ async def show_top_today(_, message: Message):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
+
 
 @app.on_callback_query(filters.regex("overall"))
 async def show_top_overall_callback(_, query: CallbackQuery):
@@ -104,6 +144,7 @@ async def show_top_overall_callback(_, query: CallbackQuery):
         ),
     )
 
+
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -133,6 +174,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
+
 
 print("started")
 app.run()
