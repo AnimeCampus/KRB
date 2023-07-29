@@ -171,7 +171,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
         ),
     )
 
-@app.on_message(filters.command("start") & filters.private)
+@app.on_message(filters.command("start"))
 async def start_command(_, message: Message):
     # Handle the start command here
     await message.reply_text(
@@ -179,6 +179,7 @@ async def start_command(_, message: Message):
         "Use /top to see today's top users."
     )
 
+# Command to view user's rank for today
 @app.on_message(filters.command("myrank") & filters.group)
 async def my_rank(_, message: Message):
     chat = chatdb.find_one({"chat": message.chat.id})
@@ -195,6 +196,7 @@ async def my_rank(_, message: Message):
         user_rank += 1
 
     await message.reply_text(f"Your ranking today is: {user_rank}")
+
 
 print("started")
 app.run()
