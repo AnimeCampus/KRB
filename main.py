@@ -113,6 +113,7 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
 
 
 
+
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -131,21 +132,10 @@ async def show_top_today_callback(_, query: CallbackQuery):
     top_users = [user_id for user_id, _ in top_users_data]
     chat_counts = [count for _, count in top_users_data]
 
-    # Generate and send the graph
+    # Generate and send the graph with the caption
     await generate_graph_and_send(query.message.chat.id, top_users, chat_counts, app)
 
-    # Update the caption in the message to show the user names and chat counts
-    t = "🔰 **Today's Top Users :**\n\n"
-    for i, (user_name, count) in enumerate(zip(top_users, chat_counts)):
-        user_name = await get_name(app, user_name)
-        t += f"**{i + 1}.** {user_name} - {count}\n"
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
+    # No need to update the caption here
 
 
 @app.on_callback_query(filters.regex("overall"))
