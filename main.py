@@ -184,28 +184,30 @@ async def show_top_overall_callback(_, query: CallbackQuery):
     & ~filters.service
 )
 async def inc_user(_, message: Message):
-    if message.text:
-        if (
-            message.text.strip() == "/top@AboutNanoBot"
-            or message.text.strip() == "/top"
-        ):
-            chat = message.chat.id
-            user = message.from_user.id
-            increase_count(chat, user)
-            print(chat, user, "increased")
+    chat = message.chat.id
+    user = message.from_user.id
 
-            # Get the top users and their chat counts
-            chat_data = chatdb.find_one({"chat": chat})
-            today = str(date.today())
-            if not chat_data or not chat_data.get(today):
-                return await message.reply_text("No data available for today")
+    # Ignore messages sent by the bot itself
+    if user == app.get_me().id:
+        return
 
-            top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
-            top_users = [user_id for user_id, _ in top_users_data]
-            chat_counts = [count for _, count in top_users_data]
+    # Increase chat count for the user
+    increase_count(chat, user)
+    print(chat, user, "increased")
 
-            # Generate and send the graph
-            await generate_graph_and_send(chat, top_users, chat_counts, app)
+    # Get the top users and their chat counts
+    chat_data = chatdb.find_one({"chat": chat})
+    today = str(date.today())
+    if not chat_data or not chat_data.get(today):
+        return await message.reply_text("No data available for today")
+
+    top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
+    top_users = [user_id for user_id, _ in top_users_data]
+    chat_counts = [count for _, count in top_users_data]
+
+    # Generate and send the graph with the caption
+    await generate_graph_and_send(chat, top_users, chat_counts, app)
+
 
 
 print("started")
