@@ -112,6 +112,43 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
 
 ...
 
+@app.on_callback_query(filters.regex("overall"))
+async def show_top_overall_callback(_, query: CallbackQuery):
+    print("overall top in", query.message.chat.id)
+    chat = chatdb.find_one({"chat": query.message.chat.id})
+
+    if not chat:
+        return await query.answer("No data available", show_alert=True)
+
+    await query.answer("Processing... Please wait")
+
+    t = "🔰 **Overall Top Users :**\n\n"
+
+    overall_dict = {}
+    for i, k in chat.items():
+        if i == "chat" or i == "_id":
+            continue
+
+        for j, l in k.items():
+            if j not in overall_dict:
+                overall_dict[j] = l
+            else:
+                overall_dict[j] += l
+
+    pos = 1
+    for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+
+        t += f"**{pos}.** {i} - {k}\n"
+        pos += 1
+
+    await query.message.edit_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
+        ),
+    )
+
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -147,9 +184,6 @@ async def show_top_today_callback(_, query: CallbackQuery):
     )
 
 ...
-
-app.run()
-
 
 print("started")
 app.run()
