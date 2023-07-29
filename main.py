@@ -1,112 +1,181 @@
-import os
+from utils.db import get_name, increase_count, chatdb
+import uvloop
 import matplotlib.pyplot as plt
-import numpy as np
-import asyncio
+from io import BytesIO
+from pyrogram.client import Client
+from pyrogram import filters
 from datetime import date
-from pyrogram import Client, filters, idle
-from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 
+uvloop.install()
 app = Client(
     "boto",
-    api_id= "19099900",
-    api_hash= "2b445de78e5baf012a0793e60bd4fbf5",
-    bot_token= "6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
+    api_id="API_ID",
+    api_hash="API_HASH",
+    bot_token="BOT_TOKEN",
 )
-
-# In-memory data storage (replace this with MongoDB database)
-chatdb = {}
 
 
 @app.on_message(
-    filters.command("start") & ~filters.bot & ~filters.forwarded
-)
-async def start_command(_, message: Message):
-    await message.reply_text("Welcome to the AnimeKrew Ranking Bot!\nType /top to see the top rankings.")
-
-
-@app.on_message(
-    ~filters.bot & ~filters.forwarded & filters.group & ~filters.via_bot & ~filters.service
+    ~filters.bot
+    & ~filters.forwarded
+    & filters.group
+    & ~filters.via_bot
+    & ~filters.service
 )
 async def inc_user(_, message: Message):
+    if message.text:
+        if (
+            message.text.strip() == "/top@AboutNanoBot"
+            or message.text.strip() == "/top"
+        ):
+            return await show_top_today(_, message)
+
     chat = message.chat.id
     user = message.from_user.id
     increase_count(chat, user)
     print(chat, user, "increased")
 
 
-def increase_count(chat_id, user_id):
-    today = str(date.today())
-    chat_data = chatdb.setdefault(chat_id, {today: {}})
-    user_data = chat_data[today].setdefault(user_id, 0)
-    chat_data[today][user_id] = user_data + 1
-
-
-@app.on_message(
-    filters.command("top") & ~filters.forwarded & filters.group
-)
 async def show_top_today(_, message: Message):
-    chat = message.chat.id
+    print("today top in", message.chat.id)
+    chat = chatdb.find_one({"chat": message.chat.id})
     today = str(date.today())
 
-    if not chatdb.get(chat) or not chatdb[chat].get(today):
-        return await message.reply_text("No data available for today")
+    if not chat:
+        return await message.reply_text("no data available")
 
-    user_data = sorted(chatdb[chat][today].items(), key=lambda x: x[1], reverse=True)[:10]
+    if not chat.get(today):
+        return await message.reply_text("no data available for today")
 
     t = "🔰 **Today's Top Users :**\n\n"
-    pos = 1
 
-    for user_id, count in user_data:
-        i = await get_name(app, user_id)  # Replace this with your method to get user names
-        t += f"**{pos}.** {i} - {count}\n"
-        pos += 1
+    top_users = []
+    chat_counts = []
+    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+        top_users.append(i)
+        chat_counts.append(k)
 
-    total_users = len(chatdb[chat][today])
-    total_groups = len(chatdb) - 1  # Subtract 1 to exclude the metadata document
+        t += f"**{len(top_users)}.** {i} - {k}\n"
 
-    t += f"\n📈 **Statistics:**\nTotal Users: {total_users}\nTotal Groups: {total_groups}"
+    # Generate and send the graph
+    generate_graph_and_send(message.chat.id, top_users, chat_counts)
 
-    # Create a bar chart for the top users
-    users = [await get_name(app, item[0]) for item in user_data]
-    scores = [item[1] for item in user_data]
-
-    plt.barh(np.arange(len(users)), scores, align='center', color='skyblue')
-    plt.yticks(np.arange(len(users)), users)
-    plt.xlabel('Scores')
-    plt.title("Today's Top Users")
-
-    # Save the plot to an image
-    plt.tight_layout()
-    plt.savefig('top_users_chart.png', dpi=300)
-    plt.close()
-
-    # Send the chart along with the text
-    await message.reply_photo(
-        photo='top_users_chart.png',
-        caption=t,
+    await message.reply_text(
+        t,
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Show Photo", callback_data="show_photo")]]
+            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
 
-    os.remove('top_users_chart.png')
+
+def generate_graph_and_send(chat_id, top_users, chat_counts):
+    plt.figure(figsize=(10, 6))
+    plt.bar(top_users, chat_counts, color="skyblue")
+    plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Users")
+    plt.ylabel("Chat Count")
+    plt.title("Today's Top Users")
+    plt.tight_layout()
+
+    # Save the graph to a BytesIO object
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png")
+    buffer.seek(0)
+
+    # Send the graph as a photo to the chat
+    app.send_photo(
+        chat_id=chat_id,
+        photo=buffer,
+        caption="🔰 **Today's Top Users**",
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+        ),
+    )
+
+    # Close the plot to avoid memory leaks
+    plt.close()
 
 
-@app.on_callback_query(filters.regex("show_photo"))
-async def show_photo_callback(_, query: CallbackQuery):
-    # Respond with a photo here
-    await query.answer("This is the photo response.")
-    await query.message.reply_photo("top_users_chart.png")  # Replace with the actual photo URL
+@app.on_callback_query(filters.regex("overall"))
+async def show_top_overall_callback(_, query: CallbackQuery):
+    print("overall top in", query.message.chat.id)
+    chat = chatdb.find_one({"chat": query.message.chat.id})
+
+    if not chat:
+        return await query.answer("No data available", show_alert=True)
+
+    await query.answer("Processing... Please wait")
+
+    t = "🔰 **Overall Top Users :**\n\n"
+
+    overall_dict = {}
+    for i, k in chat.items():
+        if i == "chat" or i == "_id":
+            continue
+
+        for j, l in k.items():
+            if j not in overall_dict:
+                overall_dict[j] = l
+            else:
+                overall_dict[j] += l
+
+    pos = 1
+    for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+
+        t += f"**{pos}.** {i} - {k}\n"
+        pos += 1
+
+    await query.message.edit_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
+        ),
+    )
 
 
-# Helper function to get user names (Replace this with your method to get user names)
-async def get_name(client, user_id):
-    try:
-        user = await client.get_users(user_id)
-        return f"{user.first_name} {user.last_name}" if user.last_name else user.first_name
-    except Exception:
-        return "Unknown User"
+@app.on_callback_query(filters.regex("today"))
+async def show_top_today_callback(_, query: CallbackQuery):
+    print("today top in", query.message.chat.id)
+    chat = chatdb.find_one({"chat": query.message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await query.answer("No data available", show_alert=True)
+
+    if not chat.get(today):
+        return await query.answer("No data available for today", show_alert=True)
+
+    await query.answer("Processing... Please wait")
+
+    t = "🔰 **Today's Top Users :**\n\n"
+
+    pos = 1
+    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+
+        t += f"**{pos}.** {i} - {k}\n"
+        pos += 1
+
+    # Generate and send the graph
+    top_users = [i async for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
+    chat_counts = [k async for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
+    generate_graph_and_send(query.message.chat.id, top_users, chat_counts)
+
+    await query.message.edit_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+        ),
+    )
 
 
-print("Started")  
-app.run() 
+print("started")
+app.run()
