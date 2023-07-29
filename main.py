@@ -134,44 +134,5 @@ async def show_top_today_callback(_, query: CallbackQuery):
         ),
     )
 
-@app.on_message(filters.command("start"))
-async def start_command(_, message: Message):
-    # Handle the start command here
-    await message.reply_text(
-        "Hello! I am the RankingssBot. I track user activity in groups and provide daily and overall rankings. "
-        "Use /top to see today's top users."
-    )
-
-# Command to view user's rank for today
-@app.on_message(
-    ~filters.bot
-    & ~filters.forwarded
-    & filters.group
-    & ~filters.via_bot
-    & ~filters.service
-)
-async def inc_user(_, message: Message):
-    if message.text:
-        if (
-            message.text.strip() == "/myrank@RankingssBot"
-            or message.text.strip() == "/myrank"
-        ):
-            return await my_rank(_, message)
-    chat = chatdb.find_one({"chat": message.chat.id})
-    today = str(date.today())
-
-    if not chat or not chat.get(today):
-        return await message.reply_text("Sorry, no data available for today.")
-
-    user_id = message.from_user.id
-    user_rank = 1
-    for user, count in sorted(chat[today].items(), key=lambda x: x[1], reverse=True):
-        if user == user_id:
-            break
-        user_rank += 1
-
-    await message.reply_text(f"Your ranking today is: {user_rank}")
-
-
 print("started")
 app.run()
