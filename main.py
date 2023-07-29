@@ -71,8 +71,11 @@ async def get_names_async(app, user_ids):
 
 
 async def generate_graph_and_send(chat_id, top_users, app):
-    # Get the chat counts for the top users
-    chat_counts = [get_count(chat_id, user_id) for user_id in top_users]
+    # Get the chat counts for the top users from the top_users_data
+    chat_data = chatdb.find_one({"chat": chat_id})
+    today = str(date.today())
+    top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
+    chat_counts = [count for _, count in top_users_data]
 
     plt.figure(figsize=(10, 6))
     plt.bar(top_users, chat_counts, color="skyblue")
