@@ -20,7 +20,48 @@ app = Client(
     bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
 )
 
-# ... (Code for the increase_count function and the mongo client)
+uri = "mongodb+srv://jarvis:op@cluster0.7tisvwv.mongodb.net/?retryWrites=true&w=majority"
+mongo = MongoClient(uri).Rankings
+chatdb = mongo.chat
+
+
+def increase_count(chat, user):
+    user = str(user)
+    today = str(date.today())
+    user_db = chatdb.find_one({"chat": chat})
+
+    if not user_db:
+        user_db = {}
+    elif not user_db.get(today):
+        user_db = {}
+    else:
+        user_db = user_db[today]
+
+    if user in user_db:
+        user_db[user] += 1
+    else:
+        user_db[user] = 1
+
+    chatdb.update_one({"chat": chat}, {"$set": {today: user_db}}, upsert=True)
+
+
+name_cache = {}
+
+
+async def get_name(app, id):
+    global name_cache
+
+    if id in name_cache:
+        return name_cache[id]
+    else:
+        try:
+            i = await app.get_users(id)
+            i = f'{(i.first_name or "")} {(i.last_name or "")}'
+            name_cache[id] = i
+            return i
+        except:
+            return id
+
 
 async def get_first_name(app, user_id):
     user = await app.get_users(user_id)
@@ -28,9 +69,11 @@ async def get_first_name(app, user_id):
         return user.first_name
     return "Unknown User"
 
+
 async def get_names_async(app, user_ids):
     tasks = [get_first_name(app, user_id) for user_id in user_ids]
     return await asyncio.gather(*tasks)
+
 
 async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.figure(figsize=(10, 6))
@@ -67,6 +110,7 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     # Close the plot to avoid memory leaks
     plt.close()
 
+
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -96,6 +140,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
+
 
 @app.on_callback_query(filters.regex("overall"))
 async def show_top_overall_callback(_, query: CallbackQuery):
@@ -134,6 +179,7 @@ async def show_top_overall_callback(_, query: CallbackQuery):
         ),
     )
 
+
 @app.on_message(
     ~filters.bot
     & ~filters.forwarded
@@ -164,6 +210,7 @@ async def inc_user(_, message: Message):
 
             # Generate and send the graph
             await generate_graph_and_send(chat, top_users, chat_counts, app)
-            
+
+
 print("started")
 app.run()
