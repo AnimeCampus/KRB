@@ -39,11 +39,19 @@ async def inc_user(_, message: Message):
             increase_count(chat, user)
             print(chat, user, "increased")
 
-            # Fetch the top users
-            top_users = get_top_users(chat, 10)
+            # Get the top users and their chat counts
+            chat_data = chatdb.find_one({"chat": chat})
+            today = str(date.today())
+            if not chat_data or not chat_data.get(today):
+                return await message.reply_text("No data available for today")
+
+            top_users_data = sorted(chat_data[today].items(), key=lambda x: x[1], reverse=True)[:10]
+            top_users = [user_id for user_id, _ in top_users_data]
 
             # Generate and send the graph
             await generate_graph_and_send(chat, top_users, _)
+
+...
 
 import asyncio
 
