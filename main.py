@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import asyncio
 from datetime import date
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 app = Client(
@@ -108,10 +108,7 @@ async def get_name(client, user_id):
         return "Unknown User"
 
 
-async def main():
-    print("Started")
-    await app.start()    
 
-
-if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(main())
+print("Started")  
+app.start() 
+idle() 
