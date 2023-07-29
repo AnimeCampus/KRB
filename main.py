@@ -60,7 +60,6 @@ async def show_top_today(_, message: Message):
         t += f"**{pos}.** {i} - {k}\n"
         pos += 1
 
-    await generate_ranking_graph(chat)  # Generate and save the graph
     await message.reply_text(
         t,
         reply_markup=InlineKeyboardMarkup(
