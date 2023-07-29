@@ -8,9 +8,9 @@ from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineK
 
 app = Client(
     "boto",
-    api_id="YOUR_API_ID",
-    api_hash="YOUR_API_HASH",
-    bot_token="YOUR_BOT_TOKEN",
+    api_id= "19099900",
+    api_hash= "2b445de78e5baf012a0793e60bd4fbf5",
+    bot_token= "6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
 )
 
 # In-memory data storage (replace this with MongoDB database)
