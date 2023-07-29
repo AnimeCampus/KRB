@@ -112,6 +112,7 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.close()
 
 
+
 @app.on_callback_query(filters.regex("today"))
 async def show_top_today_callback(_, query: CallbackQuery):
     print("today top in", query.message.chat.id)
@@ -126,14 +127,18 @@ async def show_top_today_callback(_, query: CallbackQuery):
 
     await query.answer("Processing... Please wait")
 
-    t = "🔰 **Today's Top Users :**\n\n"
-
     top_users_data = sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]
     top_users = [user_id for user_id, _ in top_users_data]
     chat_counts = [count for _, count in top_users_data]
 
     # Generate and send the graph
     await generate_graph_and_send(query.message.chat.id, top_users, chat_counts, app)
+
+    # Update the caption in the message to show the user names and chat counts
+    t = "🔰 **Today's Top Users :**\n\n"
+    for i, (user_name, count) in enumerate(zip(top_users, chat_counts)):
+        user_name = await get_name(app, user_name)
+        t += f"**{i + 1}.** {user_name} - {count}\n"
 
     await query.message.edit_text(
         t,
