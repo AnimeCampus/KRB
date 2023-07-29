@@ -185,7 +185,8 @@ async def view_top_rankings(_, message: Message):
     user = message.from_user.id
 
     # Ignore messages sent by the bot itself
-    if user == app.get_me().id:
+    me = await app.get_me()
+    if user == me.id:
         return
 
     # Get the top users and their chat counts
@@ -200,6 +201,7 @@ async def view_top_rankings(_, message: Message):
 
     # Generate and send the graph with the caption
     await generate_graph_and_send(chat, top_users, chat_counts, app)
+
 
 print("started")
 app.run()
