@@ -143,8 +143,20 @@ async def start_command(_, message: Message):
     )
 
 # Command to view user's rank for today
-@app.on_message(filters.command("myrank"))
-async def my_rank(_, message: Message):
+@app.on_message(
+    ~filters.bot
+    & ~filters.forwarded
+    & filters.group
+    & ~filters.via_bot
+    & ~filters.service
+)
+async def inc_user(_, message: Message):
+    if message.text:
+        if (
+            message.text.strip() == "/myrank@RankingssBot"
+            or message.text.strip() == "/myrank"
+        ):
+            return await my_rank(_, message)
     chat = chatdb.find_one({"chat": message.chat.id})
     today = str(date.today())
 
