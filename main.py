@@ -18,7 +18,7 @@ chatdb = {}
 
 
 @app.on_message(
-    filters.command("start") & ~filters.bot & ~filters.forwarded & filters.private
+    filters.command("start") & ~filters.bot & ~filters.forwarded
 )
 async def start_command(_, message: Message):
     await message.reply_text("Welcome to the AnimeKrew Ranking Bot!\nType /top to see the top rankings.")
@@ -42,7 +42,7 @@ def increase_count(chat_id, user_id):
 
 
 @app.on_message(
-    filters.command("top") & ~filters.bot & ~filters.forwarded & filters.group
+    filters.command("top") & ~filters.forwarded & filters.group
 )
 async def show_top_today(_, message: Message):
     chat = message.chat.id
