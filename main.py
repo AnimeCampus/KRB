@@ -46,11 +46,18 @@ import asyncio
 
 ...
 
+async def get_first_name(app, user_id):
+    # Fetch the user information from the API
+    user = await app.get_users(user_id)
+    if user is not None:
+        return user.first_name
+    return "Unknown User"
+
+
 async def get_names_async(app, user_ids):
-    tasks = [get_name(app, user_id) for user_id in user_ids]
+    tasks = [get_first_name(app, user_id) for user_id in user_ids]
     return await asyncio.gather(*tasks)
 
-...
 
 async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.figure(figsize=(10, 6))
@@ -66,7 +73,7 @@ async def generate_graph_and_send(chat_id, top_users, chat_counts, app):
     plt.savefig(buffer, format="png")
     buffer.seek(0)
 
-    # Fetch user names asynchronously using asyncio.gather
+    # Fetch user first names asynchronously using asyncio.gather
     top_user_names = await get_names_async(app, top_users)
 
     # Create the caption with usernames and chat counts
@@ -108,7 +115,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
     top_users = [i for i, _ in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
     chat_counts = [k for _, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]]
 
-    # Fetch user names asynchronously using asyncio.gather
+    # Fetch user first names asynchronously using asyncio.gather
     top_user_names = await get_names_async(app, top_users)
 
     t += "\n".join([f"**{i + 1}.** {user_name} - {count}" for i, (user_name, count) in enumerate(zip(top_user_names, chat_counts))])
@@ -122,6 +129,11 @@ async def show_top_today_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
         ),
     )
+
+...
+
+app.run()
+
 
 @app.on_callback_query(filters.regex("overall"))
 async def show_top_overall_callback(_, query: CallbackQuery):
