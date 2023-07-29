@@ -34,13 +34,16 @@ async def inc_user(_, message: Message):
             message.text.strip() == "/top@AboutNanoBot"
             or message.text.strip() == "/top"
         ):
-            return await generate_graph_and_send(_, message)
+            chat = message.chat.id
+            user = message.from_user.id
+            increase_count(chat, user)
+            print(chat, user, "increased")
 
-    chat = message.chat.id
-    user = message.from_user.id
-    increase_count(chat, user)
-    print(chat, user, "increased")
+            # Fetch the top users
+            top_users = get_top_users(chat, 10)
 
+            # Generate and send the graph
+            await generate_graph_and_send(chat, top_users, _)
 
 import asyncio
 
