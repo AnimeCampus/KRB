@@ -64,9 +64,10 @@ async def show_top_today(_, message: Message):
         pos += 1
 
     total_users = len(chat[today])
-    total_groups = chatdb.count() - 1  # Subtract 1 to exclude the metadata document
+    total_groups = chatdb.count_documents({}) - 1  # Subtract 1 to exclude the metadata document
 
     t += f"\n📈 **Statistics:**\nTotal Users: {total_users}\nTotal Groups: {total_groups}"
+
 
     # Create a bar chart for the top users
     users = [item[0] for item in user_data]
