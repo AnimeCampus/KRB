@@ -108,6 +108,5 @@ async def get_name(client, user_id):
         return "Unknown User"
 
 
-print("Started")
-app.start()
-app.run_until_disconnected()
+print("Started")  
+app.run() 
