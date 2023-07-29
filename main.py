@@ -39,6 +39,9 @@ async def generate_ranking_graph(chat):
         names.append(i)
         counts.append(k)
 
+    # Set a different font to avoid glyph missing warnings
+    plt.rcParams["font.family"] = "DejaVu Sans"
+
     plt.figure(figsize=(10, 6))
     plt.bar(names, counts, color='red')
     plt.xlabel("Users")
@@ -50,6 +53,7 @@ async def generate_ranking_graph(chat):
     # Save the graph to a file
     plt.savefig("overall_ranking_graph.png")
     plt.close()
+
 
 @app.on_message(
     ~filters.bot
