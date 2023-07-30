@@ -1,25 +1,45 @@
-from utils.db import get_name, increase_count, chatdb
+from utils.db import get_name, increase_count, chatdb  # Define these functions and database
 import uvloop
 from pyrogram.client import Client
-from PIL import Image
-from pyrogram import filters
 from datetime import date
-import matplotlib.pyplot as plt
-import io
 from pyrogram.types import (
     Message,
     CallbackQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
+import matplotlib.pyplot as plt
+import io
 
 uvloop.install()
 app = Client(
     "boto",
-    api_id="19099900",
-    api_hash="2b445de78e5baf012a0793e60bd4fbf5",
-    bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
+    api_id="YOUR_API_ID",
+    api_hash="YOUR_API_HASH",
+    bot_token="YOUR_BOT_TOKEN",
 )
+
+
+def generate_user_graph(chat_data, user_id, group_name):
+    user_messages = chat_data.get(user_id, {})
+    dates = list(user_messages.keys())
+    message_counts = list(user_messages.values())
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(dates, message_counts, marker='o', linestyle='-', color='red')
+    plt.xlabel('Date')
+    plt.ylabel('Message Count')
+    plt.title(f"{group_name} - User Message Count Over Time")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    # Save the plot to a buffer
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    plt.close()
+
+    return buffer
 
 
 @app.on_message(
@@ -32,10 +52,12 @@ app = Client(
 async def inc_user(_, message: Message):
     if message.text:
         if (
-            message.text.strip() == "/top@AboutNanoBot"
+            message.text.strip() == "/top@RankingssBot"
             or message.text.strip() == "/top"
         ):
             return await show_top_today(_, message)
+        elif message.text.startswith("/graph"):
+            return await generate_user_graph_cmd(_, message)
 
     chat = message.chat.id
     user = message.from_user.id
@@ -54,12 +76,13 @@ async def show_top_today(_, message: Message):
     if not chat.get(today):
         return await message.reply_text("no data available for today")
 
-    t = "🔰 **Today's Top Users :**\n\n"
+    group_name = message.chat.title  # Get the group name
+    t = f"🔰 **Today's Top Users in {group_name}:**\n\n"
 
     pos = 1
     for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
         i = await get_name(app, i)
-        t += f"**{pos}.** {i} - {k} \n"  # Add the message count here
+        t += f"**{pos}.** {i} - {k} messages today\n"  # Add the message count here
         pos += 1
 
     overall_count = sum(chat[today].values())
@@ -69,11 +92,29 @@ async def show_top_today(_, message: Message):
         t,
         reply_markup=InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],
-                [InlineKeyboardButton("Today's Ranking", callback_data="today")],
+                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],              
             ]
         ),
     )
+
+
+async def generate_user_graph_cmd(_, message: Message):
+    user_id = message.from_user.id
+    chat = chatdb.find_one({"chat": message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await message.reply_text("No data available")
+
+    if not chat.get(today):
+        return await message.reply_text("No data available for today")
+
+    if user_id not in chat[today]:
+        return await message.reply_text("You have not sent any messages today.")
+
+    group_name = message.chat.title  # Get the group name
+    buffer = generate_user_graph(chat[today], user_id, group_name)
+    await app.send_photo(message.chat.id, photo=buffer)
 
 
 @app.on_callback_query(filters.regex("overall"))
