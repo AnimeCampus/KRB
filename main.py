@@ -110,35 +110,56 @@ async def show_top_overall_callback(_, query: CallbackQuery):
 
 
 
+# Custom state dictionary to hold user's profile data during profile setup
+user_states = {}
+
+
+# Existing code for inc_user and show_top_today functions
+
+
 # New "profile" command
 @app.on_message(filters.command("profile") & filters.private)
 async def set_profile(_, message: Message):
-    await message.reply_text(
-        "Please provide your profile details. Send your name and an optional profile picture."
-    )
-    await app.register_next_step_handler(message, save_profile)
-
-
-async def save_profile(message: Message):
     user_id = message.from_user.id
-    user_name = message.text.strip()
 
-    if message.photo:
-        # If the user sent a photo, download it and save it as a profile picture
-        photo = message.photo[-1]
-        profile_pic = await photo.download()
+    if user_id in user_states:
+        # User already started setting the profile
+        await message.reply_text("You are already setting up your profile.")
     else:
-        profile_pic = None
+        user_states[user_id] = {}
+        user_states[user_id]["name"] = True
+        await message.reply_text("Please provide your name.")
 
-    user_data = {
-        "user_id": user_id,
-        "name": user_name,
-        "profile_pic": profile_pic,
-    }
 
-    user_profiles.replace_one({"user_id": user_id}, user_data, upsert=True)
+# Message handler for setting profile details step by step
+@app.on_message(filters.private & ~filters.command("profile"))
+async def handle_profile_setup(_, message: Message):
+    user_id = message.from_user.id
 
-    await message.reply_text("Your profile has been saved successfully!")
+    if user_id in user_states:
+        if user_states[user_id].get("name"):
+            # Collect the user's name
+            user_states[user_id]["name"] = message.text.strip()
+            await message.reply_text("Please provide an optional profile picture.")
+        elif user_states[user_id].get("profile_pic"):
+            # If the user sent a photo, save it as a profile picture
+            photo = message.photo[-1]
+            profile_pic = await photo.download()
+            user_states[user_id]["profile_pic"] = profile_pic
+
+            # Save profile data to the database
+            user_data = {
+                "user_id": user_id,
+                "name": user_states[user_id]["name"],
+                "profile_pic": user_states[user_id]["profile_pic"],
+            }
+            user_profiles.replace_one({"user_id": user_id}, user_data, upsert=True)
+
+            del user_states[user_id]  # Remove user from state dictionary
+            await message.reply_text("Your profile has been saved successfully!")
+        else:
+            # Invalid input after name, prompt again
+            await message.reply_text("Please provide a valid profile picture.")
 
 
 # New "viewprofile" command
@@ -187,6 +208,9 @@ async def inline_query_profiles(client, query):
         await query.answer(
             [InlineQueryResultArticle("0", "Profile not set.", None, None)]
         )
+
+
+# Existing code for other commands and functions
 
 
 
