@@ -22,8 +22,11 @@ app = Client(
 
 
 def generate_group_graph(chat_data, group_name):
-    dates = list(chat_data.keys())
-    message_counts = [sum(user_messages.values()) for user_messages in chat_data.values()]
+    # Filter out the "_id" field from chat_data
+    chat_data_filtered = {key: value for key, value in chat_data.items() if key != "_id"}
+
+    dates = list(chat_data_filtered.keys())
+    message_counts = [sum(user_messages.values()) for user_messages in chat_data_filtered.values()]
 
     plt.figure(figsize=(10, 6))
     plt.plot(dates, message_counts, marker='o', linestyle='-', color='blue')
@@ -40,6 +43,7 @@ def generate_group_graph(chat_data, group_name):
     plt.close()
 
     return buffer
+
 
 
 
