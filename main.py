@@ -59,9 +59,11 @@ async def show_top_today(_, message: Message):
     pos = 1
     for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
         i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
+        t += f"**{pos}.** {i} - {k} messages today\n"  # Add the message count here
         pos += 1
+
+    overall_count = sum(chat[today].values())
+    t += f"\n📈 **Total Messages Today:** {overall_count}\n"
 
     await message.reply_text(
         t,
@@ -84,6 +86,7 @@ async def show_top_overall_callback(_, query: CallbackQuery):
     t = "🔰 **Overall Top Users :**\n\n"
 
     overall_dict = {}
+    overall_count = 0
     for i, k in chat.items():
         if i == "chat" or i == "_id":
             continue
@@ -94,12 +97,15 @@ async def show_top_overall_callback(_, query: CallbackQuery):
             else:
                 overall_dict[j] += l
 
+            overall_count += l  # Calculate the overall message count here
+
     pos = 1
     for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
         i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
+        t += f"**{pos}.** {i} - {k} messages overall\n"  # Add the message count here
         pos += 1
+
+    t += f"\n📈 **Total Messages Overall:** {overall_count}\n"
 
     await query.message.edit_text(
         t,
@@ -107,7 +113,6 @@ async def show_top_overall_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
         ),
     )
-
 
 print("started")
 app.run()
