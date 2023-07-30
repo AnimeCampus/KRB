@@ -78,6 +78,13 @@ async def inc_user(_, message: Message):
             return await generate_group_graph_cmd(_, message)
         elif message.text.strip() == "/ping":
             return await show_bot_status(_, message)
+            
+            chat = message.chat.id
+            user = message.from_user.id
+            increase_count(chat, user)
+            print(chat, user, "increased")
+
+
 
 
 async def show_bot_status(_, message: Message):
@@ -99,7 +106,7 @@ async def show_bot_status(_, message: Message):
     bot_info = (
         f"🤖 **Bot Ping Info**:\n"
         f"👤 • Name: {me.first_name}\n"
-        f"👥 • Username: {me.username}\n"
+        f"👥 • Username: @{me.username}\n"
         f"🆔 • ID: {me.id}\n\n"
         f"⌛ **Uptime**: {uptime:.2f} seconds\n"
         f"📶 **Ping**: {ping_result:.2f} ms\n"
@@ -109,11 +116,6 @@ async def show_bot_status(_, message: Message):
     await progress_message.edit(bot_info)
 
 
-
-    chat = message.chat.id
-    user = message.from_user.id
-    increase_count(chat, user)
-    print(chat, user, "increased")
 
 
 # Create a new function to generate the group's message count graph
