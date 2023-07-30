@@ -1,6 +1,7 @@
 from utils.db import get_name, increase_count, chatdb
 import uvloop
 from pyrogram.client import Client
+from PIL import Image
 from pyrogram import filters
 from datetime import date
 import matplotlib.pyplot as plt
