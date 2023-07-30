@@ -21,16 +21,15 @@ app = Client(
 )
 
 
-def generate_group_graph(chat_data, user_id, group_name):
-    user_messages = chat_data.get(user_id, {})
-    dates = list(user_messages.keys())
-    message_counts = list(user_messages.values())
+def generate_group_graph(chat_data, group_name):
+    dates = list(chat_data.keys())
+    message_counts = [sum(user_messages.values()) for user_messages in chat_data.values()]
 
     plt.figure(figsize=(10, 6))
-    plt.plot(dates, message_counts, marker='o', linestyle='-', color='red')
+    plt.plot(dates, message_counts, marker='o', linestyle='-', color='blue')
     plt.xlabel('Date')
-    plt.ylabel('Message Count')
-    plt.title(f"{group_name} - User Message Count Over Time")
+    plt.ylabel('Group Message Count')
+    plt.title(f"{group_name} - Group Message Count Over Time")
     plt.xticks(rotation=45)
     plt.tight_layout()
 
@@ -41,6 +40,7 @@ def generate_group_graph(chat_data, user_id, group_name):
     plt.close()
 
     return buffer
+
 
 
 # Update the /graph command
