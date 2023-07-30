@@ -1,180 +1,42 @@
-import time
+from pyrogram import Client, filters
+from pyrogram.types import Message
+import json
 
-# Create a dictionary to keep track of users, their last message timestamps, and message counts
-user_last_message = {}
+# Replace 'YOUR_API_ID' and 'YOUR_API_HASH' with your actual API credentials obtained from my.telegram.org
+API_ID = '19099900'
+API_HASH = '2b445de78e5baf012a0793e60bd4fbf5'
+BOT_TOKEN = '6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc'
 
-
-def flood_protect(func):
-    async def wrapper(_, message):
-        user_id = message.from_user.id
-        current_time = time.time()
-
-        if user_id not in user_last_message:
-            user_last_message[user_id] = {
-                "last_message_time": current_time,
-                "message_count": 1,
-            }
-        else:
-            user_data = user_last_message[user_id]
-            last_message_time = user_data["last_message_time"]
-            time_diff = current_time - last_message_time
-
-            if time_diff < 10:  # Adjust the time limit here (in seconds)
-                if user_data["message_count"] >= 15:  # Adjust the message limit here
-                    return  # Ignore the message
-                else:
-                    user_data["message_count"] += 1
-            else:
-                user_data["last_message_time"] = current_time
-                user_data["message_count"] = 1
-
-        await func(_, message)
-
-    return wrapper
+# Initialize the Pyrogram client
+app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 
-# Your existing code
-
-from utils.db import get_name, increase_count, chatdb
-import uvloop
-import matplotlib.pyplot as plt
-from pyrogram.client import Client
-from pyrogram import filters
-from datetime import date
-from pyrogram.types import (
-    Message,
-    CallbackQuery,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-)
-
-uvloop.install()
-app = Client(
-    "boto",
-    api_id="19099900",
-    api_hash="2b445de78e5baf012a0793e60bd4fbf5",
-    bot_token="6206599982:AAFhXRwC0SnPCBK4WDwzdz7TbTsM2hccgZc",
-)
+# Dictionary to store user message counts
+user_message_counts = {}
 
 
-@app.on_message(
-    ~filters.bot
-    & ~filters.forwarded
-    & filters.group
-    & ~filters.via_bot
-    & ~filters.service
-)
-@flood_protect  # Apply flood protection decorator
-async def inc_user(_, message: Message):
-    if message.text:
-        if (
-            message.text.strip() == "/top@RankingssBot"
-            or message.text.strip() == "/top"
-        ):
-            return await show_top_today(_, message)
-
-    chat = message.chat.id
-    user = message.from_user.id
-    increase_count(chat, user)
-    print(chat, user, "increased")
+# Handler to track message counts
+@app.on_message(filters.group)
+def track_message_count(client: Client, message: Message):
+    user_id = message.from_user.id
+    if user_id not in user_message_counts:
+        user_message_counts[user_id] = 1
+    else:
+        user_message_counts[user_id] += 1
 
 
-async def show_top_today(_, message: Message):
-    print("today top in", message.chat.id)
-    chat = chatdb.find_one({"chat": message.chat.id})
-    today = str(date.today())
+# Command handler for /rankings command
+@app.on_message(filters.command("rankings", prefixes="/") & filters.group)
+def show_rankings(client: Client, message: Message):
+    sorted_users = sorted(user_message_counts.items(), key=lambda x: x[1], reverse=True)
 
-    if not chat:
-        return await message.reply_text("no data available")
+    rankings_text = "🏆 Group Message Rankings 🏆\n\n"
+    for idx, (user_id, message_count) in enumerate(sorted_users, start=1):
+        user = app.get_users(user_id)
+        rankings_text += f"{idx}. {user.first_name}: {message_count} messages\n"
 
-    if not chat.get(today):
-        return await message.reply_text("no data available for today")
-
-    t = "🔰 **Today's Top Users :**\n\n"
-
-    pos = 1
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
-
-    await message.reply_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
+    message.reply_text(rankings_text)
 
 
-@app.on_callback_query(filters.regex("overall"))
-async def show_top_overall_callback(_, query: CallbackQuery):
-    print("overall top in", query.message.chat.id)
-    chat = chatdb.find_one({"chat": query.message.chat.id})
-
-    if not chat:
-        return await query.answer("No data available", show_alert=True)
-
-    await query.answer("Processing... Please wait")
-
-    t = "🔰 **Overall Top Users :**\n\n"
-
-    overall_dict = {}
-    for i, k in chat.items():
-        if i == "chat" or i == "_id":
-            continue
-
-        for j, l in k.items():
-            if j not in overall_dict:
-                overall_dict[j] = l
-            else:
-                overall_dict[j] += l
-
-    pos = 1
-    for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
-        ),
-    )
-
-
-@app.on_callback_query(filters.regex("today"))
-async def show_top_today_callback(_, query: CallbackQuery):
-    print("today top in", query.message.chat.id)
-    chat = chatdb.find_one({"chat": query.message.chat.id})
-    today = str(date.today())
-
-    if not chat:
-        return await query.answer("No data available", show_alert=True)
-
-    if not chat.get(today):
-        return await query.answer("No data available for today", show_alert=True)
-
-    await query.answer("Processing... Please wait")
-
-    t = "🔰 **Today's Top Users :**\n\n"
-
-    pos = 1
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
-    )
-
-
-print("started")
-app.run()
+if __name__ == "__main__":
+    app.run()
