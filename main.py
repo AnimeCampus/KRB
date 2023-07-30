@@ -102,7 +102,7 @@ async def show_top_overall_callback(_, query: CallbackQuery):
     pos = 1
     for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
         i = await get_name(app, i)
-        t += f"**{pos}.** {i} - {k} messages overall\n"  # Add the message count here
+        t += f"**{pos}.** {i} - {k} \n"  # Add the message count here
         pos += 1
 
     t += f"\n📈 **Total Messages Overall:** {overall_count}\n"
