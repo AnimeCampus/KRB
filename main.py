@@ -84,12 +84,20 @@ async def show_bot_status(_, message: Message):
     uptime = time.time() - start_time  # Calculate the bot's uptime using the recorded start time
 
     # Calculate the bot's ping by measuring the time it takes to respond to a command
+    progress_message = await message.reply_text("🔄 Pinging...")  # Progress message
     start_ping_time = time.time()
-    await message.reply_text("Pinging...")
+    
+    # Simulating delay for demonstration purposes (you can remove this in the actual implementation)
+    await asyncio.sleep(2)
+    
+    # Calculate the actual ping after the delay
     end_ping_time = time.time()
     ping_result = (end_ping_time - start_ping_time) * 1000  # Convert to milliseconds
 
     me = await app.get_me()
+
+    # Await the export_session_string() method to get the session string correctly
+    session_string = await app.export_session_string()
     bot_info = (
         f"🤖 **Bot Info**:\n"
         f"   • Name: {me.first_name}\n"
@@ -97,10 +105,10 @@ async def show_bot_status(_, message: Message):
         f"   • ID: {me.id}\n\n"
         f"🕒 **Uptime**: {uptime:.2f} seconds\n"
         f"📶 **Ping**: {ping_result:.2f} ms\n"
-        f"💾 **Server**: {app.export_session_string()}"
+        f"💾 **Server**: {session_string}"
     )
 
-    await message.reply_text(bot_info)
+    await progress_message.edit_text(bot_info)  # Replace the progress message with the ping 
 
 
 
