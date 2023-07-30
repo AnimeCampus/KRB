@@ -108,196 +108,86 @@ async def show_top_overall_callback(_, query: CallbackQuery):
     )
 
 
-@app.on_callback_query(filters.regex("today"))
-async def show_top_today_callback(_, query: CallbackQuery):
-    print("today top in", query.message.chat.id)
-    chat = chatdb.find_one({"chat": query.message.chat.id})
-    today = str(date.today())
 
-    if not chat:
-        return await query.answer("No data available", show_alert=True)
-
-    if not chat.get(today):
-        return await query.answer("No data available for today", show_alert=True)
-
-    await query.answer("Processing... Please wait")
-
-    t = "🔰 **Today's Top Users :**\n\n"
-
-    pos = 1
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-
-        t += f"**{pos}.** {i} - {k}\n"
-        pos += 1
-
-    await query.message.edit_text(
-        t,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
-        ),
+# New "profile" command
+@app.on_message(filters.command("profile") & filters.private)
+async def set_profile(_, message: Message):
+    await message.reply_text(
+        "Please provide your profile details. Send your name and an optional profile picture."
     )
-
-# New "stats" command
-@app.on_message(filters.command("stats") & filters.private)
-async def show_stats(_, message: Message):
-    user_count = len(chatdb.distinct("user"))
-    group_count = chatdb.count_documents({"chat": {"$lt": 0}})
-    await message.reply_text(f"📊 Total Users: {user_count}\n👥 Total Groups: {group_count}")
+    await app.register_next_step_handler(message, save_profile)
 
 
-# New "broadcast" command
-@app.on_message(filters.command("broadcast") & filters.private)
-async def broadcast_message(_, message: Message):
-    if message.from_user.id != 6198858059:
-        return await message.reply_text("You are not authorized to use this command.")
+async def save_profile(message: Message):
+    user_id = message.from_user.id
+    user_name = message.text.strip()
 
-    text = message.text.split(" ", 1)[1]
-    all_chats = chatdb.find()
-    for chat in all_chats:
-        try:
-            await app.send_message(chat["chat"], text)
-        except Exception as e:
-            print(f"Error broadcasting to chat {chat['chat']}: {e}")
+    if message.photo:
+        # If the user sent a photo, download it and save it as a profile picture
+        photo = message.photo[-1]
+        profile_pic = await photo.download()
+    else:
+        profile_pic = None
 
-    await message.reply_text("Broadcast sent to all chats.")
+    user_data = {
+        "user_id": user_id,
+        "name": user_name,
+        "profile_pic": profile_pic,
+    }
 
+    user_profiles.replace_one({"user_id": user_id}, user_data, upsert=True)
 
-# New "graph" command
-@app.on_message(filters.command("graph") & filters.private)
-async def generate_graph(_, message: Message):
-    chat = chatdb.find_one({"chat": message.chat.id})
-    today = str(date.today())
-
-    if not chat:
-        return await message.reply_text("No data available")
-
-    if not chat.get(today):
-        return await message.reply_text("No data available for today")
-
-    x_labels = []
-    y_values = []
-    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-        i = await get_name(app, i)
-        x_labels.append(i)
-        y_values.append(k)
-
-    plt.figure(figsize=(10, 6))
-    plt.bar(x_labels, y_values)
-    plt.xlabel("Users")
-    plt.ylabel("Counts")
-    plt.title("Top Users Today")
-    plt.xticks(rotation=45, ha="right")
-
-    # Save the plot to a buffer
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png")
-    buf.seek(0)
-
-    caption = "🔰 **Today's Top Users**\nTo see overall top users, use /graph overall"
-    await app.send_photo(message.chat.id, buf, caption=caption, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📊 Overall", switch_inline_query_current_chat="overalll")]]))
-
-    # Clear the plot for the next use
-    plt.clf()
+    await message.reply_text("Your profile has been saved successfully!")
 
 
-# Inline query handling for graphs
+# New "viewprofile" command
+@app.on_message(filters.command("viewprofile") & filters.private)
+async def view_profile(_, message: Message):
+    user_id = message.from_user.id
+    user_data = user_profiles.find_one({"user_id": user_id})
+
+    if not user_data:
+        return await message.reply_text("You have not set a profile yet.")
+
+    profile_pic = user_data.get("profile_pic")
+    name = user_data.get("name")
+
+    if profile_pic:
+        # If a profile picture exists, send it along with the name
+        with open(profile_pic, "rb") as file:
+            await app.send_photo(message.chat.id, file, caption=name)
+    else:
+        await message.reply_text(name)
+
+
+# Inline query handling for user profiles
 @app.on_inline_query()
-async def inline_query_graphs(client, query):
-    if not query.query:
-        return
+async def inline_query_profiles(client, query):
+    user_id = query.from_user.id
+    user_data = user_profiles.find_one({"user_id": user_id})
 
-    results = []
-    if query.query == "overalll":
-        # Generate overall graph
-        chat = chatdb.find_one({"chat": query.from_user.id})
+    if user_data:
+        name = user_data.get("name")
+        profile_pic = user_data.get("profile_pic")
 
-        if not chat:
-            return
+        if profile_pic:
+            # If a profile picture exists, send it along with the name
+            with open(profile_pic, "rb") as file:
+                await app.send_photo(
+                    chat_id=query.chat.id,
+                    photo=file,
+                    caption=name,
+                    reply_to_message_id=query.message.message_id,
+                )
+        else:
+            await query.answer([InlineQueryResultArticle("0", name, None, None)])
 
-        overall_dict = {}
-        for i, k in chat.items():
-            if i == "chat" or i == "_id":
-                continue
-
-            for j, l in k.items():
-                if j not in overall_dict:
-                    overall_dict[j] = l
-                else:
-                    overall_dict[j] += l
-
-        x_labels = []
-        y_values = []
-        for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
-            i = await get_name(app, i)
-            x_labels.append(i)
-            y_values.append(k)
-
-        plt.figure(figsize=(10, 6))
-        plt.bar(x_labels, y_values)
-        plt.xlabel("Users")
-        plt.ylabel("Counts")
-        plt.title("Overall Top Users")
-        plt.xticks(rotation=45, ha="right")
-
-        # Save the plot to a buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png")
-        buf.seek(0)
-
-        results.append(
-            InlineQueryResultPhoto(
-                id="overall_graph",
-                photo=InputFile(buf, filename="overall_graph.png"),
-                caption="🔰 **Overall Top Users**",
-            )
+    else:
+        await query.answer(
+            [InlineQueryResultArticle("0", "Profile not set.", None, None)]
         )
 
-        # Clear the plot for the next use
-        plt.clf()
 
-    elif query.query == "today":
-        # Generate today's graph (same as the graph command)
-        chat = chatdb.find_one({"chat": query.from_user.id})
-        today = str(date.today())
-
-        if not chat:
-            return
-
-        if not chat.get(today):
-            return
-
-        x_labels = []
-        y_values = []
-        for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
-            i = await get_name(app, i)
-            x_labels.append(i)
-            y_values.append(k)
-
-        plt.figure(figsize=(10, 6))
-        plt.bar(x_labels, y_values)
-        plt.xlabel("Users")
-        plt.ylabel("Counts")
-        plt.title("Top Users Today")
-        plt.xticks(rotation=45, ha="right")
-
-        # Save the plot to a buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format="png")
-        buf.seek(0)
-
-        results.append(
-            InlineQueryResultPhoto(
-                id="today_graph",
-                photo=InputFile(buf, filename="today_graph.png"),
-                caption="🔰 **Today's Top Users**",
-            )
-        )
-
-        # Clear the plot for the next use
-        plt.clf()
-
-    await query.answer(results)
 
 
 print("started")
