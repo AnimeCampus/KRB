@@ -32,7 +32,7 @@ app = Client(
 async def inc_user(_, message: Message):
     if message.text:
         if (
-            message.text.strip() == "/top@RankingssBot"
+            message.text.strip() == "/top@AboutNanoBot"
             or message.text.strip() == "/top"
         ):
             return await show_top_today(_, message)
@@ -59,7 +59,7 @@ async def show_top_today(_, message: Message):
     pos = 1
     for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
         i = await get_name(app, i)
-        t += f"**{pos}.** {i} - {k} messages today\n"  # Add the message count here
+        t += f"**{pos}.** {i} - {k} \n"  # Add the message count here
         pos += 1
 
     overall_count = sum(chat[today].values())
@@ -68,7 +68,10 @@ async def show_top_today(_, message: Message):
     await message.reply_text(
         t,
         reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Overall Ranking", callback_data="overall")]]
+            [
+                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],
+                [InlineKeyboardButton("Today's Ranking", callback_data="today")],
+            ]
         ),
     )
 
@@ -113,6 +116,43 @@ async def show_top_overall_callback(_, query: CallbackQuery):
             [[InlineKeyboardButton("Today's Ranking", callback_data="today")]]
         ),
     )
+
+
+@app.on_callback_query(filters.regex("today"))
+async def show_top_today_callback(_, query: CallbackQuery):
+    print("today top in", query.message.chat.id)
+    chat = chatdb.find_one({"chat": query.message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await query.answer("No data available", show_alert=True)
+
+    if not chat.get(today):
+        return await query.answer("No data available for today", show_alert=True)
+
+    await query.answer("Processing... Please wait")
+
+    t = "🔰 **Today's Top Users :**\n\n"
+
+    pos = 1
+    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+        t += f"**{pos}.** {i} - {k} \n"  # Add the message count here
+        pos += 1
+
+    overall_count = sum(chat[today].values())
+    t += f"\n📈 **Total Messages Today:** {overall_count}\n"
+
+    await query.message.edit_text(
+        t,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],
+                [InlineKeyboardButton("Today's Ranking", callback_data="today")],
+            ]
+        ),
+    )
+
 
 print("started")
 app.run()
