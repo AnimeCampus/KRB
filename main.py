@@ -189,8 +189,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
         t,
         reply_markup=InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],
-                [InlineKeyboardButton("Today's Ranking", callback_data="today")],
+                [InlineKeyboardButton("Overall Ranking", callback_data="overall")],              
             ]
         ),
     )
