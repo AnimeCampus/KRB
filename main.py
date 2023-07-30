@@ -55,7 +55,7 @@ def generate_group_graph(chat_data, group_name):
 
 
 
-
+import asyncio
 import time
 
 start_time = time.time()
