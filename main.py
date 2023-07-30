@@ -26,10 +26,15 @@ def generate_group_graph(chat_data, group_name):
     chat_data_filtered = {key: value for key, value in chat_data.items() if key != "_id"}
 
     dates = list(chat_data_filtered.keys())
-    user_counts = [user_messages for user_messages in chat_data_filtered.values()]
 
     # Calculate the group message counts for each date
-    group_message_counts = [sum(user_count.get(str(date), 0) for date in dates) for user_count in user_counts]
+    group_message_counts = []
+    for date in dates:
+        total_messages = 0
+        for user_count in chat_data_filtered.values():
+            if isinstance(user_count, dict):
+                total_messages += user_count.get(str(date), 0)
+        group_message_counts.append(total_messages)
 
     plt.figure(figsize=(10, 6))
     plt.plot(dates, group_message_counts, marker='o', linestyle='-', color='blue')
@@ -46,6 +51,7 @@ def generate_group_graph(chat_data, group_name):
     plt.close()
 
     return buffer
+
 
 
 # Update the /graph command
