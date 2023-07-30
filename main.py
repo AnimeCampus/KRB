@@ -99,10 +99,9 @@ async def show_top_today(_, message: Message):
     )
 
 
-# Add the following import at the top of the file
-from pyrogram import InputFile
+# Update the generate_user_graph_cmd function as follows:
+import os
 
-# Modify the generate_user_graph_cmd function as follows:
 async def generate_user_graph_cmd(_, message: Message):
     user_id = message.from_user.id
     chat = chatdb.find_one({"chat": message.chat.id})
@@ -119,14 +118,21 @@ async def generate_user_graph_cmd(_, message: Message):
 
     group_name = message.chat.title  # Get the group name
     buffer = generate_user_graph(chat, user_id, group_name)  # Pass the entire chat data
-    buffer.name = "user_graph.png"  # Set a name for the file
 
-    # Send the graph as a photo using InputFile
+    # Save the plot to a temporary file
+    temp_file_path = ""
+    with open(temp_file_path, "wb") as file:
+        file.write(buffer.getbuffer())
+
+    # Send the graph as a photo
     await app.send_photo(
         message.chat.id,
-        photo=InputFile(buffer),
+        photo=temp_file_path,
         caption=f"Graph showing your message count over time in {group_name}",
     )
+
+    # Remove the temporary file
+    os.remove(temp_file_path)
 
 
 
