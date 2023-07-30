@@ -80,12 +80,6 @@ async def inc_user(_, message: Message):
             return await show_bot_status(_, message)
 
 
-
-# Function to split and send long messages as separate chunks
-async def send_long_message(chat_id, text, max_length=4096):
-    for i in range(0, len(text), max_length):
-        await app.send_message(chat_id, text[i : i + max_length])
-
 async def show_bot_status(_, message: Message):
     uptime = time.time() - start_time  # Calculate the bot's uptime using the recorded start time
 
@@ -102,29 +96,18 @@ async def show_bot_status(_, message: Message):
 
     me = await app.get_me()
 
-    # Await the export_session_string() method to get the session string correctly
-    session_string = await app.export_session_string()
-
-    # Extract the server name from the session_string
-    server_name_start = session_string.find("Server:")
-    server_name_end = session_string.find("\n", server_name_start)
-    server_name = session_string[server_name_start + 8 : server_name_end].strip()
-
     bot_info = (
-        f"🤖 **Bot Info**:\n"
-        f"   • Name: {me.first_name}\n"
-        f"   • Username: {me.username}\n"
-        f"   • ID: {me.id}\n\n"
+        f"🤖 **Bot Ping Info**:\n"
+        f"👤 • Name: {me.first_name}\n"
+        f"👥 • Username: {me.username}\n"
+        f"🆔 • ID: {me.id}\n\n"
         f"⌛ **Uptime**: {uptime:.2f} seconds\n"
         f"📶 **Ping**: {ping_result:.2f} ms\n"
     )
 
     # Split the bot_info and send it as separate messages
     await send_long_message(message.chat.id, bot_info)
-
-    # Send the server name as a separate message
-    await send_long_message(message.chat.id, f"💾 **Server**: {server_name}")
-
+  
     # Remove the progress message
     await progress_message.delete()
 
