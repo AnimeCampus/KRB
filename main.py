@@ -58,7 +58,9 @@ def generate_group_graph(chat_data, group_name):
 
 import time
 
+start_time = time.time()
 
+# Add the new command "/ping" to show bot's uptime, ping, and server info
 @app.on_message(
     ~filters.bot
     & ~filters.forwarded
@@ -67,18 +69,19 @@ import time
     & ~filters.service
 )
 async def inc_user(_, message: Message):
-   
+    # ... Existing code ...
+
     if message.text:
         if message.text.strip() == "/top@RankingssBot" or message.text.strip() == "/top":
             return await show_top_today(_, message)
         elif message.text.startswith("/graph"):
             return await generate_group_graph_cmd(_, message)
-        elif message.text.strip() == "/ping":  # New command to show bot's uptime, ping, and server info
+        elif message.text.strip() == "/ping":
             return await show_bot_status(_, message)
 
 
 async def show_bot_status(_, message: Message):
-    uptime = time.time() - app.start_time
+    uptime = time.time() - start_time  # Calculate the bot's uptime using the recorded start time
     ping_result = await app.get_ping()
 
     me = await app.get_me()
@@ -93,6 +96,11 @@ async def show_bot_status(_, message: Message):
     )
 
     await message.reply_text(bot_info)
+
+
+# ... Rest of the code ...
+
+
 
     chat = message.chat.id
     user = message.from_user.id
