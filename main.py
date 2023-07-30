@@ -43,6 +43,10 @@ def generate_user_graph(chat_data, user_id, group_name):
     return buffer
 
 
+import io
+
+# ... (other imports and code) ...
+
 @app.on_message(
     ~filters.bot
     & ~filters.forwarded
@@ -59,11 +63,40 @@ async def inc_user(_, message: Message):
             return await show_top_today(_, message)
         elif message.text.startswith("/graph"):
             return await generate_user_graph_cmd(_, message)
+        elif message.text.startswith("/mygraph"):
+            return await generate_user_graph_cmd(_, message)  # Add the command for generating the user's graph
+
+    # ... (rest of the code) ...
 
     chat = message.chat.id
     user = message.from_user.id
     increase_count(chat, user)
     print(chat, user, "increased")
+
+async def generate_user_graph_cmd(_, message: Message):
+    user_id = message.from_user.id
+    chat = chatdb.find_one({"chat": message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await message.reply_text("No data available")
+
+    if not chat.get(today):
+        return await message.reply_text("No data available for today")
+
+    if user_id not in chat[today]:
+        return await message.reply_text("You have not sent any messages today.")
+
+    group_name = message.chat.title  # Get the group name
+    buffer = generate_user_graph(chat, user_id, group_name)  # Pass the entire chat data
+
+    # Send the graph as a photo using the buffer directly
+    buffer.name = "user_graph.png"  # Set a name for the file
+    await app.send_photo(
+        message.chat.id,
+        photo=buffer,
+        caption=f"Graph showing your message count over time in {group_name}",
+    )
 
 
 async def show_top_today(_, message: Message):
@@ -99,40 +132,7 @@ async def show_top_today(_, message: Message):
     )
 
 
-# Update the generate_user_graph_cmd function as follows:
-import os
 
-async def generate_user_graph_cmd(_, message: Message):
-    user_id = message.from_user.id
-    chat = chatdb.find_one({"chat": message.chat.id})
-    today = str(date.today())
-
-    if not chat:
-        return await message.reply_text("No data available")
-
-    if not chat.get(today):
-        return await message.reply_text("No data available for today")
-
-    if user_id not in chat[today]:
-        return await message.reply_text("You have not sent any messages today.")
-
-    group_name = message.chat.title  # Get the group name
-    buffer = generate_user_graph(chat, user_id, group_name)  # Pass the entire chat data
-
-    # Save the plot to a temporary file
-    temp_file_path = ""
-    with open(temp_file_path, "wb") as file:
-        file.write(buffer.getbuffer())
-
-    # Send the graph as a photo
-    await app.send_photo(
-        message.chat.id,
-        photo=temp_file_path,
-        caption=f"Graph showing your message count over time in {group_name}",
-    )
-
-    # Remove the temporary file
-    os.remove(temp_file_path)
 
 
 
