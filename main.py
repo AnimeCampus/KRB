@@ -21,7 +21,7 @@ app = Client(
 )
 
 
-def generate_group_graph_cmd(chat_data, user_id, group_name):
+def generate_group_graph(chat_data, user_id, group_name):
     user_messages = chat_data.get(user_id, {})
     dates = list(user_messages.keys())
     message_counts = list(user_messages.values())
