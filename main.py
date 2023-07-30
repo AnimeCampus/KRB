@@ -82,7 +82,12 @@ async def inc_user(_, message: Message):
 
 async def show_bot_status(_, message: Message):
     uptime = time.time() - start_time  # Calculate the bot's uptime using the recorded start time
-    ping_result = await app.get_ping()
+
+    # Calculate the bot's ping by measuring the time it takes to respond to a command
+    start_ping_time = time.time()
+    await message.reply_text("Pinging...")
+    end_ping_time = time.time()
+    ping_result = (end_ping_time - start_ping_time) * 1000  # Convert to milliseconds
 
     me = await app.get_me()
     bot_info = (
@@ -91,14 +96,11 @@ async def show_bot_status(_, message: Message):
         f"   • Username: {me.username}\n"
         f"   • ID: {me.id}\n\n"
         f"🕒 **Uptime**: {uptime:.2f} seconds\n"
-        f"📶 **Ping**: {ping_result}\n"
+        f"📶 **Ping**: {ping_result:.2f} ms\n"
         f"💾 **Server**: {app.export_session_string()}"
     )
 
     await message.reply_text(bot_info)
-
-
-# ... Rest of the code ...
 
 
 
