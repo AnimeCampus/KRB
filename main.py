@@ -3,6 +3,8 @@ import uvloop
 from pyrogram.client import Client
 from pyrogram import filters
 from datetime import date
+import matplotlib.pyplot as plt
+import io
 from pyrogram.types import (
     Message,
     CallbackQuery,
@@ -160,6 +162,142 @@ async def broadcast_message(_, message: Message):
 
     await message.reply_text("Broadcast sent to all chats.")
 
+
+# New "graph" command
+@app.on_message(filters.command("graph") & filters.group)
+async def generate_graph(_, message: Message):
+    chat = chatdb.find_one({"chat": message.chat.id})
+    today = str(date.today())
+
+    if not chat:
+        return await message.reply_text("No data available")
+
+    if not chat.get(today):
+        return await message.reply_text("No data available for today")
+
+    x_labels = []
+    y_values = []
+    for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
+        i = await get_name(app, i)
+        x_labels.append(i)
+        y_values.append(k)
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(x_labels, y_values)
+    plt.xlabel("Users")
+    plt.ylabel("Counts")
+    plt.title("Top Users Today")
+    plt.xticks(rotation=45, ha="right")
+
+    # Save the plot to a buffer
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+
+    caption = "🔰 **Today's Top Users**\nTo see overall top users, use /graph overall"
+    await app.send_photo(message.chat.id, buf, caption=caption, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📊 Overall", switch_inline_query_current_chat="overalll")]]))
+
+    # Clear the plot for the next use
+    plt.clf()
+
+
+# Inline query handling for graphs
+@app.on_inline_query()
+async def inline_query_graphs(client, query):
+    if not query.query:
+        return
+
+    results = []
+    if query.query == "overalll":
+        # Generate overall graph
+        chat = chatdb.find_one({"chat": query.from_user.id})
+
+        if not chat:
+            return
+
+        overall_dict = {}
+        for i, k in chat.items():
+            if i == "chat" or i == "_id":
+                continue
+
+            for j, l in k.items():
+                if j not in overall_dict:
+                    overall_dict[j] = l
+                else:
+                    overall_dict[j] += l
+
+        x_labels = []
+        y_values = []
+        for i, k in sorted(overall_dict.items(), key=lambda x: x[1], reverse=True)[:10]:
+            i = await get_name(app, i)
+            x_labels.append(i)
+            y_values.append(k)
+
+        plt.figure(figsize=(10, 6))
+        plt.bar(x_labels, y_values)
+        plt.xlabel("Users")
+        plt.ylabel("Counts")
+        plt.title("Overall Top Users")
+        plt.xticks(rotation=45, ha="right")
+
+        # Save the plot to a buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+
+        results.append(
+            InlineQueryResultPhoto(
+                id="overall_graph",
+                photo=InputFile(buf, filename="overall_graph.png"),
+                caption="🔰 **Overall Top Users**",
+            )
+        )
+
+        # Clear the plot for the next use
+        plt.clf()
+
+    elif query.query == "today":
+        # Generate today's graph (same as the graph command)
+        chat = chatdb.find_one({"chat": query.from_user.id})
+        today = str(date.today())
+
+        if not chat:
+            return
+
+        if not chat.get(today):
+            return
+
+        x_labels = []
+        y_values = []
+        for i, k in sorted(chat[today].items(), key=lambda x: x[1], reverse=True)[:10]:
+            i = await get_name(app, i)
+            x_labels.append(i)
+            y_values.append(k)
+
+        plt.figure(figsize=(10, 6))
+        plt.bar(x_labels, y_values)
+        plt.xlabel("Users")
+        plt.ylabel("Counts")
+        plt.title("Top Users Today")
+        plt.xticks(rotation=45, ha="right")
+
+        # Save the plot to a buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+
+        results.append(
+            InlineQueryResultPhoto(
+                id="today_graph",
+                photo=InputFile(buf, filename="today_graph.png"),
+                caption="🔰 **Today's Top Users**",
+            )
+        )
+
+        # Clear the plot for the next use
+        plt.clf()
+
+    await query.answer(results)
 
 
 print("started")
