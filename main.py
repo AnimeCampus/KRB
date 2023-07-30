@@ -86,10 +86,10 @@ async def show_bot_status(_, message: Message):
     # Calculate the bot's ping by measuring the time it takes to respond to a command
     progress_message = await message.reply_text("🔄 Pinging...")  # Progress message
     start_ping_time = time.time()
-    
+
     # Simulating delay for demonstration purposes (you can remove this in the actual implementation)
     await asyncio.sleep(2)
-    
+
     # Calculate the actual ping after the delay
     end_ping_time = time.time()
     ping_result = (end_ping_time - start_ping_time) * 1000  # Convert to milliseconds
@@ -105,11 +105,8 @@ async def show_bot_status(_, message: Message):
         f"📶 **Ping**: {ping_result:.2f} ms\n"
     )
 
-    # Split the bot_info and send it as separate messages
-    await send_long_message(message.chat.id, bot_info)
-  
-    # Remove the progress message
-    await progress_message.delete()
+    # Edit the progress message to send the final response
+    await progress_message.edit(bot_info)
 
 
 
