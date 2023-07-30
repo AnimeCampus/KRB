@@ -139,7 +139,7 @@ async def show_top_today_callback(_, query: CallbackQuery):
 # New "stats" command
 @app.on_message(filters.command("stats") & filters.private)
 async def show_stats(_, message: Message):
-    user_count = chatdb.count_documents({"user": {"$exists": True}})
+    user_count = len(chatdb.distinct("user"))
     group_count = chatdb.count_documents({"chat": {"$lt": 0}})
     await message.reply_text(f"📊 Total Users: {user_count}\n👥 Total Groups: {group_count}")
 
