@@ -29,13 +29,10 @@ def generate_group_graph(chat_data, group_name):
 
     # Prepare data for plotting
     user_message_counts = {}
-    for date, user_data in chat_data_filtered.items():
-        if isinstance(user_data, dict):  # Check if user_data is a dictionary
-            for user_id, message_count in user_data.items():
-                user_message_counts.setdefault(user_id, []).append(message_count)
-        else:
-            # If user_data is not a dictionary, treat it as a single user
-            user_message_counts.setdefault("User", []).append(user_data)
+    for user_id, user_data in chat_data_filtered.items():
+        if isinstance(user_data, dict):
+            message_counts = [user_data.get(date, 0) for date in dates]
+            user_message_counts[user_id] = message_counts
 
     plt.figure(figsize=(10, 6))
     for user_id, message_counts in user_message_counts.items():
@@ -55,6 +52,7 @@ def generate_group_graph(chat_data, group_name):
     plt.close()
 
     return buffer
+
 
 
 
