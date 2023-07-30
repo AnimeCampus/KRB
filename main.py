@@ -21,15 +21,24 @@ app = Client(
 )
 
 
+import pandas as pd
+
 def generate_group_graph(chat_data, group_name):
     # Filter out the "_id" field from chat_data
     chat_data_filtered = {key: value for key, value in chat_data.items() if key != "_id"}
 
+    # Prepare data for plotting
     dates = list(chat_data_filtered.keys())
-    message_counts = [sum(user_messages.values()) for user_messages in chat_data_filtered.values()]
+    user_counts = [user_messages for user_messages in chat_data_filtered.values()]
+
+    # Create a DataFrame to handle the user message counts
+    df = pd.DataFrame(user_counts, index=dates)
+
+    # Sum the message counts for all users to get the group message counts for each date
+    group_message_counts = df.sum(axis=1)
 
     plt.figure(figsize=(10, 6))
-    plt.plot(dates, message_counts, marker='o', linestyle='-', color='blue')
+    plt.plot(dates, group_message_counts, marker='o', linestyle='-', color='blue')
     plt.xlabel('Date')
     plt.ylabel('Group Message Count')
     plt.title(f"{group_name} - Group Message Count Over Time")
