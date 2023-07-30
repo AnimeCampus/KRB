@@ -164,7 +164,7 @@ async def broadcast_message(_, message: Message):
 
 
 # New "graph" command
-@app.on_message(filters.command("graph") & filters.group)
+@app.on_message(filters.command("graph") & filters.private)
 async def generate_graph(_, message: Message):
     chat = chatdb.find_one({"chat": message.chat.id})
     today = str(date.today())
